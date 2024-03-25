@@ -199,7 +199,7 @@ void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* d
 
             zScales[index]      = scale / (zValue * 255.0f);
             zOffsets[index]     = (int)(horizon - zScales[index] * (position.y * 255.0f));
-            zFades[index]       = 1.0f - powf(zFactor, 4.0f);
+            zFades[index]       = 1.0f - powf(zFactor, 8.0f);
 
             zPositionX[index]   = scaleXZ * ((-cosPhi * zValue - sinPhi * zValue) + position.x);
             zPositionZ[index]   = scaleXZ * (( sinPhi * zValue - cosPhi * zValue) + position.z);
@@ -218,7 +218,7 @@ void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* d
         uint8_t minHeight = height;
 
         // Scan front to back + skip early if the theoretical max is occluded
-        for (unsigned int z = 0u; z < DEPTH && (zMaxHeight[z] <= minHeight); ++z)
+        for (unsigned int z = 0u; z < DEPTH && (zMaxHeight[z] < minHeight) && (minHeight > 0) ; ++z)
         {
             // Sample coordinates
             const float sampleX = x * zDX[z] + zPositionX[z];

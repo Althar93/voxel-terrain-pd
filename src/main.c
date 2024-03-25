@@ -80,8 +80,8 @@ float yaw;
 static int initUpdate(PlaydateAPI* pd)
 {
     Bitmap* ditherBitmap = bitmap.loadFromFile(pd, "images/bayer16tile2.bmp");
-    Bitmap* heightBitmap = bitmap.loadFromFile(pd, "images/D21.bmp");
-    Bitmap* colourBitmap = bitmap.loadFromFile(pd, "images/C21.bmp");
+    Bitmap* heightBitmap = bitmap.loadFromFile(pd, "images/D1.bmp");
+    Bitmap* colourBitmap = bitmap.loadFromFile(pd, "images/C1W.bmp");
 
     heightmap = voxel_terrain_newHeightMap(heightBitmap, colourBitmap);
     ditherMap = voxel_terrain_newDitherMap(ditherBitmap);
