@@ -6,38 +6,38 @@
 
 typedef struct Vector3
 {
-	float x;
-	float y;
-	float z;
+    float x;
+    float y;
+    float z;
 } Vector3;
 
 typedef struct DitherMap
 {
-	uint8_t*		data;
-	unsigned int	width;
-	unsigned int	height;
+    uint8_t*        data;
+    unsigned int    width;
+    unsigned int    height;
 } DitherMap;
 
 typedef struct TerrainSample
 {
-	union
-	{
-		struct
-		{
-			uint8_t height;
-			uint8_t luminance;
-		};
+    union
+    {
+        struct
+        {
+            uint8_t height;
+            uint8_t luminance;
+        };
 
-		uint8_t data[2];
-	};
+        uint8_t data[2];
+    };
 
 } TerrainSample;
 
 typedef struct HeightMap
 {
-	TerrainSample*	data;
-	unsigned int	width;
-	unsigned int	height;
+    TerrainSample*  data;
+    unsigned int    width;
+    unsigned int    height;
 } HeightMap;
 
 HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* colourmap);

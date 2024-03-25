@@ -56,5 +56,5 @@ dkms.conf
 
 # Build folders
 build_simulator
-build_device
-build_release
+build_device_debug
+build_device_release

@@ -7,11 +7,11 @@
 
 typedef struct BitmapFileHeader
 {
-	unsigned short  bfType;
-	unsigned int    bfSize;
-	unsigned short  bfReserved1;
-	unsigned short  bfReserved2;
-	unsigned int    bfOffBits;
+    unsigned short  bfType;
+    unsigned int    bfSize;
+    unsigned short  bfReserved1;
+    unsigned short  bfReserved2;
+    unsigned int    bfOffBits;
 } BitmapFileHeader;
 
 typedef struct BitmapInfoHeader
