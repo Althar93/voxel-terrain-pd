@@ -74,8 +74,8 @@ int eventHandler(PlaydateAPI* pd, PDSystemEvent event, uint32_t arg)
 int state = STATE_INIT;
 
 Vector3 viewPosition;
-float p = 0.0f;
-float y = 0.0f;
+float pitch;
+float yaw;
 
 static int initUpdate(PlaydateAPI* pd)
 {
@@ -97,8 +97,8 @@ static int initUpdate(PlaydateAPI* pd)
         .z = heightmap->height / 2.0f
     };
 
-    y = 0.0f;
-    p = 0.0f;
+    yaw = 0.0f;
+    pitch = 0.0f;
 
     frameCounter = 0;
 
@@ -126,16 +126,14 @@ static int mainUpdate(PlaydateAPI* pd)
             // Pass NULL instead to draw lines
             uint8_t* data = pd->graphics->getFrame();
 
-            voxel_terrain_draw(data, LCD_ROWSIZE, ditherMap, heightmap, viewPosition, y, p, near, far, 0.25f, 20000.0f, LCD_COLUMNS, LCD_ROWS);
+            voxel_terrain_draw(data, LCD_ROWSIZE, ditherMap, heightmap, viewPosition, yaw, pitch, near, far, 0.25f, 20000.0f, LCD_COLUMNS, LCD_ROWS);
         }
 
-        //uint8_t* data = pd->graphics->getFrame();
+        char* buffer;
+        pd->system->formatString(&buffer, "Position x=%i y=%i z=%i", (int)viewPosition.x, (int)viewPosition.y, (int)viewPosition.z);
 
-        char* buffer2;
-        pd->system->formatString(&buffer2, "Position x=%i y=%i z=%i", (int)viewPosition.x, (int)viewPosition.y, (int)viewPosition.z);
-
-        pd->graphics->setDrawMode(kDrawModeFillWhite);
-        pd->graphics->drawText(buffer2, strlen(buffer2), kASCIIEncoding, 0, 16);
+        pd->graphics->setDrawMode(kDrawModeFillBlack);
+        pd->graphics->drawText(buffer, strlen(buffer), kASCIIEncoding, 1, 16);
     }
 
     // Coarse dt
@@ -148,26 +146,17 @@ static int mainUpdate(PlaydateAPI* pd)
     // Input
     if (1)
     {
-        const float cosPhi  = cosf(y);
-        const float sinPhi  = sinf(y);
-
-        //Vector3 translation = (Vector3)
-        //{
-        //  -sinPhi* xzSpeed * dt,
-        //  0.0f,
-        //  cosPhi * xzSpeed * dt
-        //};
+        const float cosPhi  = cosf(yaw);
+        const float sinPhi  = sinf(yaw);
 
         if (current & kButtonLeft)
         {
-            y += ySpeed * dt;
-            //viewPosition.x -= 1 * xzSpeed * dt;
+            yaw += ySpeed * dt;
         }
         
         if (current & kButtonRight)
         {
-            y -= ySpeed * dt;
-            //viewPosition.x += 1 * xzSpeed * dt;
+            yaw -= ySpeed * dt;
         }
 
         if (current & kButtonUp)
@@ -197,7 +186,7 @@ static int mainUpdate(PlaydateAPI* pd)
             viewPosition.y += 1 * ySpeed * dt;
         }
 
-        p += pd->system->getCrankChange() / 360.0f;
+        pitch += pd->system->getCrankChange() / 360.0f;
     }
 
     pd->graphics->setDrawMode(kDrawModeFillWhite);

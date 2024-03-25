@@ -144,14 +144,15 @@ LCDSolidColor voxel_terrain_dither(const DitherMap* dithermap, unsigned int x, u
     const int yDither               = y % dithermap->height;
     const unsigned char ditherMask = dithermap->data[xDither + yDither * dithermap->width];
 
-    return luminance >= ditherMask ? kColorWhite : kColorBlack;
+    return (LCDSolidColor)(luminance >= ditherMask);
 }
 
 static inline void voxel_terrain_setPixel(uint8_t* bitmapData, uint16_t rowBytes, unsigned int x, unsigned int y, uint8_t value)
 {
+    // Based off : https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching
     const uint16_t dstIndex = (x >> 3) + (y * rowBytes);
-    //bitmapData[dstIndex]   |= (value << (uint8_t)(7 - (x % 8)));
-    bitmapData[dstIndex] &= ~(!value << (uint8_t)(7 - (x % 8)));
+    const uint8_t mask      = (1 << (uint8_t)(7 - (x % 8)));
+    bitmapData[dstIndex]    = (bitmapData[dstIndex] & ~mask) | (-value & mask);
 }
 
 static inline void voxel_terrain_drawDither(uint8_t* bitmapData, uint16_t rowBytes, const DitherMap* dithermap, unsigned int x, unsigned int y, uint8_t luminance)
@@ -164,13 +165,13 @@ static inline void voxel_terrain_drawDither(uint8_t* bitmapData, uint16_t rowByt
     voxel_terrain_setPixel(bitmapData, rowBytes, x, y, luminance >= ditherMask);
 }
 
+// Number of samples - adjust to balance quality vs performance
+#define LINE_WIDTH  (8u)
+#define DEPTH       (2 * 96u)
+
 // Based off : https://github.com/s-macke/VoxelSpace
 void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* dithermap, const HeightMap* heightmap, Vector3 position, float yaw, float pitch, unsigned int near, unsigned int far, float scaleXZ, float scale, int width, int height)
 {
-    // Number of samples - adjust to balance quality vs performance
-    const unsigned int lineWidth    = 8u;
-    const unsigned int depth        = 2 * 96u;
-
     // Precompute horizon & cos
     const int horizon               = (int)roundf((1.0f + pitch) * (0.5f * height));
     const float cosPhi              = cosf(yaw);
@@ -179,83 +180,76 @@ void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* d
     // Precomputed dx/dz factors
     const float dxFactor            = ( 2.0f * cosPhi) / (float)width;
     const float dzFactor            = (-2.0f * sinPhi) / (float)width;
-    const float dz                  = 1.0f / depth;
+    const float dz                  = 1.0f / DEPTH;
 
     // Precompute z values, scales, offsets and factors
-    float zScales[LCD_ROWS];
-    int   zOffsets[LCD_ROWS];
-    //float zFactors[LCD_ROWS];
-    float zFades[LCD_ROWS];
-    float zPositionX[LCD_ROWS];
-    float zPositionZ[LCD_ROWS];
-    float zDX[LCD_ROWS];
-    float zDZ[LCD_ROWS];
-    int   zMaxHeight[LCD_ROWS];
+    float zScales[DEPTH];
+    int   zOffsets[DEPTH];
+    float zFades[DEPTH];
+    float zPositionX[DEPTH];
+    float zPositionZ[DEPTH];
+    float zDX[DEPTH];
+    float zDZ[DEPTH];
+    int   zMaxHeight[DEPTH];
     {
-        for (unsigned int index = 0; index < depth; ++index)
+        for (unsigned int index = 0; index < DEPTH; ++index)
         {
-            const float zFactor     = dz * index;
-            const float zValue      = near + (far - near) * (zFactor * zFactor);
+            const float zFactor = dz * index;
+            const float zValue  = near + (far - near) * (zFactor * zFactor);
 
-            //zFactors[index]           = zFactor;
-            zScales[index]          = scale / (zValue * 255.0f);
-            zOffsets[index]         = horizon - zScales[index] * (position.y * 255.0f);
-            zFades[index]           = 1.0f - powf(zFactor, 4.0f);
+            zScales[index]      = scale / (zValue * 255.0f);
+            zOffsets[index]     = (int)(horizon - zScales[index] * (position.y * 255.0f));
+            zFades[index]       = 1.0f - powf(zFactor, 4.0f);
 
-            zPositionX[index]       = scaleXZ * ((-cosPhi * zValue - sinPhi * zValue) + position.x);
-            zPositionZ[index]       = scaleXZ * (( sinPhi * zValue - cosPhi * zValue) + position.z);
+            zPositionX[index]   = scaleXZ * ((-cosPhi * zValue - sinPhi * zValue) + position.x);
+            zPositionZ[index]   = scaleXZ * (( sinPhi * zValue - cosPhi * zValue) + position.z);
 
-            zDX[index]              = scaleXZ * dxFactor * zValue;
-            zDZ[index]              = scaleXZ * dzFactor * zValue;
+            zDX[index]          = scaleXZ * dxFactor * zValue;
+            zDZ[index]          = scaleXZ * dzFactor * zValue;
 
-            zMaxHeight[index]       = height - (255 * zScales[index] + zOffsets[index]);
+            zMaxHeight[index]   = CLAMP(height - (int)(255 * zScales[index] + zOffsets[index]), 0, height - 1);
         }
     }
 
     // From left to right
-    //for (unsigned int x = 0u; x < (unsigned int)width; ++x)
-    for (unsigned int x = 0u; x < (unsigned int)width; x += lineWidth)
+    for (unsigned int x = 0u; x < (unsigned int)width; x += LINE_WIDTH)
     {
         // Start off at min height
         uint8_t minHeight = height;
 
         // Scan front to back + skip early if the theoretical max is occluded
-        for (unsigned int z = 0u; z < depth /* && (zMaxHeight[z] < minHeight)*/; ++z)
+        for (unsigned int z = 0u; z < DEPTH && (zMaxHeight[z] <= minHeight); ++z)
         {
             // Sample coordinates
-            const float sampleX     = x * zDX[z] + zPositionX[z];
-            const float sampleZ     = x * zDZ[z] + zPositionZ[z];
+            const float sampleX = x * zDX[z] + zPositionX[z];
+            const float sampleZ = x * zDZ[z] + zPositionZ[z];
 
             //const TerrainSample sample = voxel_terrain_getSample(heightmap, current.x, current.z);
             const TerrainSample sample = voxel_terrain_getSampleLinear(heightmap, sampleX, sampleZ);
             //const TerrainSample sample = zFactors[z] > 0.75f ? voxel_terrain_getSample(heightmap, sampleX, sampleZ) : voxel_terrain_getSampleLinear(heightmap, sampleX, sampleZ);
                 
-            // Compute gradient & draw if visible
-            const unsigned char luminance = 255 + (sample.luminance - 255) * zFades[z];//sample.luminance * zFades[z];
+            // Fade luminance
+            const unsigned char fadeLuminance = 255u;
+            const unsigned char luminance     = fadeLuminance + (sample.luminance - fadeLuminance) * zFades[z];
 
-            if (luminance > 0)
+            if (luminance != fadeLuminance)
             {
-                const int heightOnScreen = sample.height * zScales[z] + zOffsets[z];
+                const int heightOnScreen = (int)(sample.height * zScales[z] + zOffsets[z]);
 
                 if (heightOnScreen > 0)
                 {
                     // Compute upper and lower bounds of the vertical line
                     const unsigned int top = CLAMP(height - heightOnScreen, 0, height - 1);
-                    const unsigned int bot = CLAMP(MIN(minHeight, height), top, height - 1);
+                    const unsigned int bot = CLAMP(MIN(minHeight, height), top, height);
 
-                    // Draw the vertical line with dithering
-                    for (unsigned int u = 0u; u < lineWidth; ++u)
+                    // Draw rectangle with dithering
+                    for (unsigned int u = 0u; u < LINE_WIDTH; ++u)
                     {
                         for (unsigned int y = top; y < bot; ++y)
                         {
                             voxel_terrain_drawDither(bitmapData, rowBytes, dithermap, x + u, y, luminance);
                         }
                     }
-
-                    //for (unsigned int y = top; y < bot; ++y)
-                    //{
-                    //  voxel_terrain_drawDither(bitmapData, rowBytes, dithermap, x, y, luminance);
-                    //}
 
                     minHeight = MIN(minHeight, top);
                 }
