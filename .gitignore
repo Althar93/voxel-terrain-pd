@@ -50,3 +50,11 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Playdate specific
+*.pdx
+
+# Build folders
+build_simulator
+build_device
+build_release
