@@ -1,0 +1,8 @@
+name=voxel-terrain
+author=Craig Hupin
+description=A voxel terrain renderer inspired by Novalogic's own terrain rendering tech
+bundleID=com.chupin.voxel
+version=1.0
+buildNumber=1
+imagePath=images
+launchSoundPath=
