@@ -55,6 +55,7 @@ struct bitmap_api
 {
     Bitmap* (*loadFromFile)(PlaydateAPI* pd, const char* path);
     BitmapPixel (*getPixel)(const Bitmap* bitmap, unsigned int x, unsigned int y);
+    BitmapPixel (*getPixelLinear)(const Bitmap* bitmap, float x, float y);
 
     void (*freeBitmap)(Bitmap*);
 };

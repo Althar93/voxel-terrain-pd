@@ -7,14 +7,16 @@
 #define MAX(A, B)           (A > B ? A : B)
 #define CLAMP(A, B, C)      (A < B ? B : (A > C ? C : A))
 
-HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* colourMap)
+HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* colourMap, int scale)
 {
     HeightMap* newHeightmap = (HeightMap*)malloc(sizeof(HeightMap));
 
+    const float gamma = 1.0f;
+
     if (newHeightmap)
     {
-        newHeightmap->width   = heightmap->infoHeader.biWidth;
-        newHeightmap->height  = heightmap->infoHeader.biHeight;
+        newHeightmap->width   = scale * heightmap->infoHeader.biWidth;
+        newHeightmap->height  = scale * heightmap->infoHeader.biHeight;
         newHeightmap->data    = (TerrainSample*)malloc(sizeof(TerrainSample) * newHeightmap->width * newHeightmap->height);
 
         if (newHeightmap->data)
@@ -24,22 +26,25 @@ HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* col
                 for (unsigned int x = 0; x < newHeightmap->width; ++x)
                 {
                     // Index
-                    const unsigned int index = x + y * newHeightmap->height;
+                    const unsigned int dstIndex = x + y * newHeightmap->height;
+
+                    const float xSource = (x / (float)newHeightmap->width)  * heightmap->infoHeader.biWidth;
+                    const float ySource = (y / (float)newHeightmap->height) * heightmap->infoHeader.biHeight;
 
                     // Height
                     {
-                        const BitmapPixel rgb   = bitmap.getPixel(heightmap, x, y);
+                        const BitmapPixel rgb   = bitmap.getPixelLinear(heightmap, xSource, ySource); 
                         const float height      = (rgb.r / 255.0f);
         
-                        newHeightmap->data[index].height = (uint8_t)roundf(height * 255.0f);
+                        newHeightmap->data[dstIndex].height = (uint8_t)roundf(height * 255.0f);
                     }
 
                     // Colour
                     {
-                        const BitmapPixel rgb = bitmap.getPixel(colourMap, x, y);
-                        const float luminance = powf(rgb.r / 255.0f, 2.2f) * 0.2126f + powf(rgb.g / 255.0f, 2.2f) * 0.7152f + powf(rgb.b / 255.0f, 2.2f) * 0.0722f;
+                        const BitmapPixel rgb = bitmap.getPixelLinear(colourMap, xSource, ySource);
+                        const float luminance = powf(rgb.r / 255.0f, gamma) * 0.2126f + powf(rgb.g / 255.0f, gamma) * 0.7152f + powf(rgb.b / 255.0f, gamma) * 0.0722f;
 
-                        newHeightmap->data[index].luminance = (uint8_t)roundf(luminance * 255.0f);
+                        newHeightmap->data[dstIndex].luminance = (uint8_t)roundf(luminance * 255.0f);
                     }
                 }
             }
@@ -166,11 +171,12 @@ static inline void voxel_terrain_drawDither(uint8_t* bitmapData, uint16_t rowByt
 }
 
 // Number of samples - adjust to balance quality vs performance
+//#define LINE_WIDTH  (8u)
 #define LINE_WIDTH  (8u)
 #define DEPTH       (2 * 96u)
 
 // Based off : https://github.com/s-macke/VoxelSpace
-void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* dithermap, const HeightMap* heightmap, Vector3 position, float yaw, float pitch, unsigned int near, unsigned int far, float scaleXZ, float scale, int width, int height)
+void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* dithermap, const HeightMap* heightmap, Vector3 position, float yaw, float pitch, float roll, unsigned int near, unsigned int far, float scaleXZ, float scale, int width, int height)
 {
     // Precompute horizon & cos
     const int horizon               = (int)roundf((1.0f + pitch) * (0.5f * height));
@@ -224,8 +230,8 @@ void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* d
             const float sampleX = x * zDX[z] + zPositionX[z];
             const float sampleZ = x * zDZ[z] + zPositionZ[z];
 
-            //const TerrainSample sample = voxel_terrain_getSample(heightmap, current.x, current.z);
-            const TerrainSample sample = voxel_terrain_getSampleLinear(heightmap, sampleX, sampleZ);
+            const TerrainSample sample = voxel_terrain_getSample(heightmap, sampleX, sampleZ);
+            //const TerrainSample sample = voxel_terrain_getSampleLinear(heightmap, sampleX, sampleZ);
             //const TerrainSample sample = zFactors[z] > 0.75f ? voxel_terrain_getSample(heightmap, sampleX, sampleZ) : voxel_terrain_getSampleLinear(heightmap, sampleX, sampleZ);
                 
             // Fade luminance

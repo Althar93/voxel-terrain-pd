@@ -76,6 +76,7 @@ int state = STATE_INIT;
 Vector3 viewPosition;
 float pitch;
 float yaw;
+float roll;
 
 static int initUpdate(PlaydateAPI* pd)
 {
@@ -83,7 +84,7 @@ static int initUpdate(PlaydateAPI* pd)
     Bitmap* heightBitmap = bitmap.loadFromFile(pd, "images/D1.bmp");
     Bitmap* colourBitmap = bitmap.loadFromFile(pd, "images/C1W.bmp");
 
-    heightmap = voxel_terrain_newHeightMap(heightBitmap, colourBitmap);
+    heightmap = voxel_terrain_newHeightMap(heightBitmap, colourBitmap, 4);
     ditherMap = voxel_terrain_newDitherMap(ditherBitmap);
 
     bitmap.freeBitmap(heightBitmap);
@@ -97,8 +98,9 @@ static int initUpdate(PlaydateAPI* pd)
         .z = heightmap->height / 2.0f
     };
 
-    yaw = 0.0f;
-    pitch = 0.0f;
+    yaw     = 0.0f;
+    pitch   = 0.0f;
+    roll    = 0.0f;
 
     frameCounter = 0;
 
@@ -119,14 +121,14 @@ static int mainUpdate(PlaydateAPI* pd)
             frameCounter++;
 
             unsigned int near   = 1;
-            unsigned int far    = (heightmap->height) * 2;
+            unsigned int far    = (heightmap->height);
 
             pd->graphics->clear(kColorWhite);
 
             // Pass NULL instead to draw lines
             uint8_t* data = pd->graphics->getFrame();
 
-            voxel_terrain_draw(data, LCD_ROWSIZE, ditherMap, heightmap, viewPosition, yaw, pitch, near, far, 0.25f, 20000.0f, LCD_COLUMNS, LCD_ROWS);
+            voxel_terrain_draw(data, LCD_ROWSIZE, ditherMap, heightmap, viewPosition, yaw, pitch, roll, near, far, 2.0f * 0.5f, 20000.0f, LCD_COLUMNS, LCD_ROWS);
         }
 
         char* buffer;

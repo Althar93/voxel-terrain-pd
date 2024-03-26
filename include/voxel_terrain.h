@@ -40,11 +40,11 @@ typedef struct HeightMap
     unsigned int    height;
 } HeightMap;
 
-HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* colourmap);
+HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* colourmap, int scale);
 DitherMap* voxel_terrain_newDitherMap(const Bitmap* colourmap);
 
 void voxel_terrain_freeHeightMap(HeightMap* heightmap);
 void voxel_terrain_freeDitherMap(DitherMap* heightmap);
-void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* dithermap, const HeightMap* heigtmap, Vector3 position, float yaw, float pitch, unsigned int near, unsigned int far, float scaleXZ, float scale, int width, int height);
+void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* dithermap, const HeightMap* heigtmap, Vector3 position, float yaw, float pitch, float roll, unsigned int near, unsigned int far, float scaleXZ, float scale, int width, int height);
 
 #endif
