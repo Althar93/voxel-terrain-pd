@@ -45,6 +45,20 @@ DitherMap* voxel_terrain_newDitherMap(const Bitmap* colourmap);
 
 void voxel_terrain_freeHeightMap(HeightMap* heightmap);
 void voxel_terrain_freeDitherMap(DitherMap* heightmap);
-void voxel_terrain_draw(uint8_t* bitmapData, size_t rowBytes, const DitherMap* dithermap, const HeightMap* heigtmap, Vector3 position, float yaw, float pitch, float roll, unsigned int near, unsigned int far, float scaleXZ, float scale, int width, int height);
+void voxel_terrain_draw(
+    uint8_t* bitmapData, 
+    const uint16_t rowBytes,
+    const DitherMap* dithermap, 
+    const HeightMap* heigtmap, 
+    const Vector3* position, 
+    const float yaw, 
+    const float pitch, 
+    const float roll, 
+    const uint16_t near,
+    const uint16_t far,
+    const float scaleXZ, 
+    float scale, 
+    const int width, 
+    const int height);
 
 #endif

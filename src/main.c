@@ -128,7 +128,7 @@ static int mainUpdate(PlaydateAPI* pd)
             // Pass NULL instead to draw lines
             uint8_t* data = pd->graphics->getFrame();
 
-            voxel_terrain_draw(data, LCD_ROWSIZE, ditherMap, heightmap, viewPosition, yaw, pitch, roll, near, far, 2.0f * 0.5f, 20000.0f, LCD_COLUMNS, LCD_ROWS);
+            voxel_terrain_draw(data, LCD_ROWSIZE, ditherMap, heightmap, &viewPosition, yaw, pitch, roll, near, far, 2.0f * 0.5f, 20000.0f, LCD_COLUMNS, LCD_ROWS);
         }
 
         char* buffer;
@@ -153,11 +153,13 @@ static int mainUpdate(PlaydateAPI* pd)
 
         if (current & kButtonLeft)
         {
+            roll -= ySpeed * dt;
             yaw += ySpeed * dt;
         }
         
         if (current & kButtonRight)
         {
+            roll += ySpeed * dt;
             yaw -= ySpeed * dt;
         }
 
