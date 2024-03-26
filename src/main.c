@@ -144,6 +144,7 @@ static int mainUpdate(PlaydateAPI* pd)
 
     float xzSpeed = 50.0f;
     float ySpeed  = 1.0f;
+    float rSpeed  = 50.0f;
 
     // Input
     if (1)
@@ -153,14 +154,20 @@ static int mainUpdate(PlaydateAPI* pd)
 
         if (current & kButtonLeft)
         {
-            roll -= ySpeed * dt;
-            yaw += ySpeed * dt;
+            roll -= rSpeed * dt;
+            yaw += ySpeed * dt * MAX(-roll / 45.0f, 0.0f);
         }
         
         if (current & kButtonRight)
         {
-            roll += ySpeed * dt;
-            yaw -= ySpeed * dt;
+            roll += rSpeed * dt;
+            yaw -= ySpeed * dt * MAX(roll / 45.0f, 0.0f);
+        }
+
+        // Clamp + decay
+        {
+            roll = CLAMP(roll, -45.0f, 45.0f);
+            roll = LERP(roll, 0.0f, 0.5f * dt);
         }
 
         if (current & kButtonUp)
@@ -173,6 +180,12 @@ static int mainUpdate(PlaydateAPI* pd)
         {
             viewPosition.x += sinPhi * xzSpeed * dt;
             viewPosition.z += cosPhi * xzSpeed * dt;
+        }
+
+        // Constant forward motion
+        {
+            viewPosition.x -= sinPhi * xzSpeed * dt;
+            viewPosition.z -= cosPhi * xzSpeed * dt;
         }
 
         if (current & kButtonB)

@@ -4,6 +4,12 @@
 #include "pd_api.h"
 #include "bitmap.h"
 
+#define ABS(A)              (A < 0 ? -A : A)
+#define MIN(A, B)           (A < B ? A : B)
+#define MAX(A, B)           (A > B ? A : B)
+#define CLAMP(A, B, C)      (A < B ? B : (A > C ? C : A))
+#define LERP(A, B, F)       (A + (B - A) * F)
+
 typedef struct Vector3
 {
     float x;

@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MIN(A, B)           (A < B ? A : B)
-#define MAX(A, B)           (A > B ? A : B)
-#define CLAMP(A, B, C)      (A < B ? B : (A > C ? C : A))
-
 HeightMap* voxel_terrain_newHeightMap(const Bitmap* heightmap, const Bitmap* colourMap, int scale)
 {
     HeightMap* newHeightmap = (HeightMap*)malloc(sizeof(HeightMap));
@@ -174,6 +170,8 @@ static inline void voxel_terrain_drawDither(uint8_t* bitmapData, const uint16_t 
 #define LINE_WIDTH  (8u)
 #define DEPTH       (2 * 96u)
 
+#define ROLL_ENABLED (1)
+
 // Based off : https://github.com/s-macke/VoxelSpace
 void voxel_terrain_draw(
     uint8_t* bitmapData, 
@@ -201,6 +199,11 @@ void voxel_terrain_draw(
     const float dzFactor            = (-2.0f * sinPhi) / (float)width;
     const float dz                  = 1.0f / DEPTH;
 
+    // Precompute half width for roll
+    const float halfWidth           = width / 2.0f;
+    const float rcpHalfWidth        = 1.0f / halfWidth;
+    const int positionY             = (position->y * 255);
+
     // Precompute z values, scales, offsets and factors
     float zScales[DEPTH];
     int   zOffsets[DEPTH];
@@ -210,24 +213,28 @@ void voxel_terrain_draw(
     float zDX[DEPTH];
     float zDZ[DEPTH];
     int   zMaxHeight[DEPTH];
+
+    for (unsigned int z = 0; z < DEPTH; ++z)
     {
-        for (unsigned int index = 0; index < DEPTH; ++index)
-        {
-            const float zFactor = dz * index;
-            const float zValue  = near + (far - near) * (zFactor * zFactor);
+        const float zFactor = dz * z;
+        const float zValue  = near + (far - near) * (zFactor * zFactor);
 
-            zScales[index]      = scale / (zValue * 255.0f);
-            zOffsets[index]     = (int)(horizon - zScales[index] * (position->y * 255.0f));
-            zFades[index]       = (uint8_t)(255 * (1.0f - powf(zFactor, 8.0f)));
+        zScales[z]      = scale / (zValue * 255.0f);
+        zOffsets[z]     = (int)(horizon - zScales[z] * positionY);
+        zFades[z]       = (uint8_t)(255 * (1.0f - powf(zFactor, 8.0f)));
 
-            zPositionX[index]   = scaleXZ * ((-cosPhi * zValue - sinPhi * zValue) + position->x);
-            zPositionZ[index]   = scaleXZ * (( sinPhi * zValue - cosPhi * zValue) + position->z);
+        zPositionX[z]   = scaleXZ * ((-cosPhi * zValue - sinPhi * zValue) + position->x);
+        zPositionZ[z]   = scaleXZ * (( sinPhi * zValue - cosPhi * zValue) + position->z);
 
-            zDX[index]          = scaleXZ * dxFactor * zValue;
-            zDZ[index]          = scaleXZ * dzFactor * zValue;
+        zDX[z]          = scaleXZ * dxFactor * zValue;
+        zDZ[z]          = scaleXZ * dzFactor * zValue;
 
-            zMaxHeight[index]   = CLAMP(height - (int)(255 * zScales[index] + zOffsets[index]), 0, height - 1);
-        }
+        zMaxHeight[z]   = CLAMP(height - (int)(255 * zScales[z] + zOffsets[z]), 0, height - 1);
+
+        // When roll is enabled, we need the offset to be relative to '0'
+        #if ROLL_ENABLED
+            zOffsets[z] -= horizon;
+        #endif
     }
 
     // From left to right
@@ -252,7 +259,14 @@ void voxel_terrain_draw(
 
             if (luminance != fadeLuminance)
             {
-                const int heightOnScreen = (int)(sample.height * zScales[z] + zOffsets[z]);
+                #if ROLL_ENABLED
+                    const float relativeX       = (x - halfWidth) * rcpHalfWidth;
+                    const int shiftedHorizon    = (int)(relativeX * roll + horizon);
+                    const int zRollOffset       = (int)(shiftedHorizon + zOffsets[z]);
+                    const int heightOnScreen    = (int)(sample.height * zScales[z] + zRollOffset);
+                #else
+                    const int heightOnScreen    = (int)(sample.height * zScales[z] + zOffsets[z]);
+                #endif
 
                 if (heightOnScreen > 0)
                 {
